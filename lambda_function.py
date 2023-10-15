@@ -30,8 +30,6 @@ def lambda_handler(event, context):
             if is_segmented:
                 return json.dumps({"image": image_to_base64(output_path)})
             return json.dumps({"image": ""})
-            
-
 
     except Exception as e:
         print(e)
