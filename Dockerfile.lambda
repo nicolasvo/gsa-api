@@ -1,10 +1,13 @@
+FROM public.ecr.aws/lambda/python:3.10 as builder
+
+RUN pip install --no-cache-dir torch
+
 FROM public.ecr.aws/lambda/python:3.10
 
 RUN yum install -y gcc git mesa-libGL
-RUN pip install torch
+COPY --from=builder /var/lang/lib/python3.10/site-packages /var/lang/lib/python3.10/site-packages
 RUN git clone https://github.com/nicolasvo/Grounded-Segment-Anything.git && cd Grounded-Segment-Anything && pip install -e segment_anything && pip install -e GroundingDINO
-
-COPY weights/sam_vit_h_4b8939.pth ${LAMBDA_TASK_ROOT}/weights/
+COPY weights/sam_vit_l_0b3195.pth ${LAMBDA_TASK_ROOT}/weights/
 # COPY weights/.cache/ /root/.cache/
 COPY lambda_function.py image.py ${LAMBDA_TASK_ROOT}
 ENV NUMBA_CACHE_DIR=/tmp
