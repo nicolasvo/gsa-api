@@ -6,15 +6,6 @@ from fastapi import FastAPI, HTTPException
 
 from image import make_sticker
 
-import faulthandler
-
-faulthandler.enable()
-
-import os
-
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-
-
 app = FastAPI()
 
 
