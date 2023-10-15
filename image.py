@@ -7,7 +7,7 @@ from groundingdino.util.utils import clean_state_dict
 from groundingdino.util.inference import annotate, load_image, predict
 
 # segment anything
-from segment_anything import build_sam, SamPredictor
+from segment_anything import build_sam_vit_l, SamPredictor
 import cv2
 import numpy as np
 
@@ -40,8 +40,8 @@ ckpt_config_filename = "GroundingDINO_SwinB.cfg.py"
 groundingdino_model = load_model_hf(ckpt_repo_id, ckpt_filenmae, ckpt_config_filename)
 
 device = "cpu"
-sam_checkpoint = "./weights/sam_vit_h_4b8939.pth"
-sam = build_sam(checkpoint=sam_checkpoint)
+sam_checkpoint = "./weights/sam_vit_l_0b3195.pth"
+sam = build_sam_vit_l(checkpoint=sam_checkpoint)
 sam.to(device=device)
 sam_predictor = SamPredictor(sam)
 
