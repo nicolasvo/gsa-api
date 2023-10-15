@@ -176,7 +176,7 @@ def remove_small_regions(image, min_area=20 * 20):
 
 def segment(input_path, text_prompt):
     local_image_path = input_path
-    TEXT_PROMPT = text_prompt
+    TEXT_PROMPT = text_prompt.replace(" and ", " . ")
     BOX_TRESHOLD = 0.3
     TEXT_TRESHOLD = 0.25
 
