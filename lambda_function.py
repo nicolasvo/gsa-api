@@ -26,9 +26,12 @@ def lambda_handler(event, context):
             input_path = f"{tmpdirname}/input.jpeg"
             output_path = f"{tmpdirname}/output.png"
             base64_to_image(image, input_path)
-            make_sticker(input_path, output_path, text_prompt)
+            is_segmented = make_sticker(input_path, output_path, text_prompt)
+            if is_segmented:
+                return json.dumps({"image": image_to_base64(output_path)})
+            return json.dumps({"image": ""})
+            
 
-            return json.dumps({"image": image_to_base64(output_path)})
 
     except Exception as e:
         print(e)
