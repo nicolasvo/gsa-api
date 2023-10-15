@@ -206,6 +206,8 @@ def segment(input_path, text_prompt):
     transformed_boxes = sam_predictor.transform.apply_boxes_torch(
         boxes_xyxy, image_source.shape[:2]
     ).to(device)
+    if transformed_boxes.shape[0] == 0:
+        return False, False
     masks, _, _ = sam_predictor.predict_torch(
         point_coords=None,
         point_labels=None,
@@ -224,6 +226,8 @@ def segment(input_path, text_prompt):
 
 def make_sticker(input_path, output_path, text_prompt):
     image, mask = segment(input_path, text_prompt)
+    if isinstance(image, bool) and image is False:
+        return False
     bbox = get_bbox_from_mask(mask)
     image = extract_bounding_box(image, bbox)
     image = rescale_image(image, padding=13)
@@ -231,3 +235,5 @@ def make_sticker(input_path, output_path, text_prompt):
     image = add_outline(image, 40, (255, 255, 255, 255))
     image = rescale_image(image, padding=0)
     cv2.imwrite(output_path, image)
+
+    return True

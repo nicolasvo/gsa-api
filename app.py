@@ -31,8 +31,10 @@ async def process_image(image_data: dict):
         input_path = f"{tmpdirname}/input.jpeg"
         output_path = f"{tmpdirname}/output.png"
         base64_to_image(image_base64, input_path)
-        make_sticker(input_path, output_path, text_prompt)
-        return json.dumps({"image": image_to_base64(output_path)})
+        is_segmented = make_sticker(input_path, output_path, text_prompt)
+        if is_segmented:
+            return json.dumps({"image": image_to_base64(output_path)})
+        return json.dumps({"image": ""})
 
     # Process the image and the provided data here
     # You can perform image processing, object detection, etc. using the image, boxes, and points.
