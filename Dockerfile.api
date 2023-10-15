@@ -15,4 +15,5 @@ ENV NUMBA_CACHE_DIR=/tmp
 # ENV LD_PRELOAD="/usr/lib/libtcmalloc_minimal.so.4"
 
 # Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
-CMD [ "uvicorn app:app --host=0.0.0.0" ]
+ENTRYPOINT [ "uvicorn" ]
+CMD [ "app:app --host=0.0.0.0" ]
