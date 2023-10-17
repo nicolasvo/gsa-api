@@ -7,9 +7,10 @@ from groundingdino.util.utils import clean_state_dict
 from groundingdino.util.inference import annotate, load_image, predict
 
 # segment anything
-from segment_anything import build_sam, SamPredictor
+from segment_anything import build_sam_vit_l, SamPredictor
 import cv2
 import numpy as np
+from scipy import ndimage
 
 # diffusers
 import torch
@@ -40,8 +41,8 @@ ckpt_config_filename = "GroundingDINO_SwinB.cfg.py"
 groundingdino_model = load_model_hf(ckpt_repo_id, ckpt_filenmae, ckpt_config_filename)
 
 device = "cpu"
-sam_checkpoint = "./weights/sam_vit_h_4b8939.pth"
-sam = build_sam(checkpoint=sam_checkpoint)
+sam_checkpoint = "./weights/sam_vit_l_0b3195.pth"
+sam = build_sam_vit_l(checkpoint=sam_checkpoint)
 sam.to(device=device)
 sam_predictor = SamPredictor(sam)
 
@@ -131,52 +132,66 @@ def extract_bounding_box(image, bbox):
         return None
 
 
-def get_bbox_from_mask(mask):
-    mask = mask.astype(np.uint8)
-    contours, hierarchy = cv2.findContours(
-        mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
-    if len(contours) == 0:
-        return False
-    x1, y1, w, h = cv2.boundingRect(contours[0])
-    x2, y2 = x1 + w, y1 + h
-    if len(contours) > 1:
-        for b in contours:
-            x_t, y_t, w_t, h_t = cv2.boundingRect(b)
-            x1 = min(x1, x_t)
-            y1 = min(y1, y_t)
-            x2 = max(x2, x_t + w_t)
-            y2 = max(y2, y_t + h_t)
-        h = y2 - y1
-        w = x2 - x1
-    return [x1, y1, x2, y2]
+def get_bbox_from_image(image):
+    alpha_channel = image[
+        :, :, 3
+    ]  # Assuming alpha channel is the last channel (index 3)
+    non_transparent_mask = alpha_channel > 0
+
+    # Find the coordinates of non-transparent pixels
+    non_transparent_indices = np.argwhere(non_transparent_mask)
+
+    if non_transparent_indices.size > 0:
+        x1, y1 = non_transparent_indices.min(axis=0)
+        x2, y2 = non_transparent_indices.max(axis=0)
+
+        # Bounding box coordinates
+        x1, y1, x2, y2 = y1, x1, y2, x2  # Swap x and y for correct format
+        return x1, y1, x2, y2
+    return False
 
 
-def remove_small_regions(image, min_area=20 * 20):
-    img_array = image
-    h, w, _ = img_array.shape
+def keep_small_transparent_regions(mask, h_threshold=None, w_threshold=None):
+    if h_threshold is None:
+        h_threshold = mask.shape[0] * 0.5
+    if w_threshold is None:
+        w_threshold = mask.shape[1] * 0.5
 
-    # Create a binary mask for non-transparent pixels
-    non_transparent_mask = img_array[:, :, 3] > 0
+    labeled, num_features = ndimage.label(mask == 0)
+    sizes = np.bincount(labeled.ravel())
+    mask_sizes = sizes[labeled]
+    mask_filled = mask.copy()
 
-    # Find connected components (small regions) and remove them
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-        non_transparent_mask.astype(np.uint8)
-    )
+    for label in range(1, num_features + 1):
+        h, w = np.where(labeled == label)
+        if len(h) <= h_threshold and len(w) <= w_threshold:
+            mask_filled[h, w] = 1
 
-    for label in range(1, num_labels):
-        if stats[label, cv2.CC_STAT_AREA] < min_area:
-            non_transparent_mask[labels == label] = False
+    return mask_filled
 
-    # Apply the mask to the original image
-    img_array[~non_transparent_mask] = [0, 0, 0, 0]
 
-    return img_array
+def remove_small_nontransparent_regions(mask, h_threshold=None, w_threshold=None):
+    if h_threshold is None:
+        h_threshold = mask.shape[0] * 0.5
+    if w_threshold is None:
+        w_threshold = mask.shape[1] * 0.5
+
+    labeled, num_features = ndimage.label(mask == 1)
+    sizes = np.bincount(labeled.ravel())
+    mask_sizes = sizes[labeled]
+    mask_removed = mask.copy()
+
+    for label in range(1, num_features + 1):
+        h, w = np.where(labeled == label)
+        if len(h) <= h_threshold and len(w) <= w_threshold:
+            mask_removed[h, w] = 0
+
+    return mask_removed
 
 
 def segment(input_path, text_prompt):
     local_image_path = input_path
-    TEXT_PROMPT = text_prompt
+    TEXT_PROMPT = text_prompt.replace(" and ", " . ")
     BOX_TRESHOLD = 0.3
     TEXT_TRESHOLD = 0.25
 
@@ -206,6 +221,8 @@ def segment(input_path, text_prompt):
     transformed_boxes = sam_predictor.transform.apply_boxes_torch(
         boxes_xyxy, image_source.shape[:2]
     ).to(device)
+    if transformed_boxes.shape[0] == 0:
+        return False, False
     masks, _, _ = sam_predictor.predict_torch(
         point_coords=None,
         point_labels=None,
@@ -216,18 +233,23 @@ def segment(input_path, text_prompt):
     image = cv2.imread(input_path)
     masks = masks.numpy().squeeze(1)
     mask = np.sum(masks, axis=0)
+    mask = keep_small_transparent_regions(mask)
+    mask = remove_small_nontransparent_regions(mask)
     alpha_channel = np.where(mask == 0, 0, 255).astype(np.uint8)
     image = cv2.merge((image, alpha_channel))
 
-    return image, mask
+    return image
 
 
 def make_sticker(input_path, output_path, text_prompt):
-    image, mask = segment(input_path, text_prompt)
-    bbox = get_bbox_from_mask(mask)
+    image = segment(input_path, text_prompt)
+    bbox = get_bbox_from_image(image)
+    if isinstance(bbox, bool) and bbox is False:
+        return False
     image = extract_bounding_box(image, bbox)
     image = rescale_image(image, padding=13)
-    image = remove_small_regions(image)
     image = add_outline(image, 40, (255, 255, 255, 255))
     image = rescale_image(image, padding=0)
     cv2.imwrite(output_path, image)
+
+    return True
