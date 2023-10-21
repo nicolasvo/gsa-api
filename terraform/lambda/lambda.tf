@@ -6,7 +6,7 @@ resource "aws_cloudwatch_log_group" "gsa" {
 
 resource "aws_lambda_function" "gsa" {
   function_name = "gsa"
-  memory_size   = 8000
+  memory_size   = 10240
   timeout       = 900
   package_type  = "Image"
   architectures = ["x86_64"]
