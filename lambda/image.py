@@ -175,9 +175,9 @@ def remove_small_nontransparent_regions(
     mask, h_area_threshold=None, w_area_threshold=None
 ):
     if h_area_threshold is None:
-        h_area_threshold = mask.shape[0] * 0.01
+        h_area_threshold = mask.shape[0] * 0.05
     if w_area_threshold is None:
-        w_area_threshold = mask.shape[1] * 0.01
+        w_area_threshold = mask.shape[1] * 0.05
 
     labeled, num_features = ndimage.label(mask == 1)
     sizes = np.bincount(labeled.ravel())
@@ -226,7 +226,7 @@ def segment(input_path, text_prompt):
         boxes_xyxy, image_source.shape[:2]
     ).to(device)
     if transformed_boxes.shape[0] == 0:
-        return False, False
+        return False
     masks, _, _ = sam_predictor.predict_torch(
         point_coords=None,
         point_labels=None,
@@ -248,6 +248,8 @@ def segment(input_path, text_prompt):
 
 def make_sticker(input_path, output_path, text_prompt):
     image = segment(input_path, text_prompt)
+    if isinstance(image, bool) and image is False:
+        return False
     bbox = get_bbox_from_image(image)
     if isinstance(bbox, bool) and bbox is False:
         return False
