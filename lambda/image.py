@@ -151,11 +151,11 @@ def get_bbox_from_image(image):
     return False
 
 
-def keep_small_transparent_regions(mask, h_threshold=None, w_threshold=None):
-    if h_threshold is None:
-        h_threshold = mask.shape[0] * 0.5
-    if w_threshold is None:
-        w_threshold = mask.shape[1] * 0.5
+def keep_small_transparent_regions(mask, h_area_threshold=None, w_area_threshold=None):
+    if h_area_threshold is None:
+        h_area_threshold = mask.shape[0] * 0.01
+    if w_area_threshold is None:
+        w_area_threshold = mask.shape[1] * 0.01
 
     labeled, num_features = ndimage.label(mask == 0)
     sizes = np.bincount(labeled.ravel())
@@ -163,18 +163,21 @@ def keep_small_transparent_regions(mask, h_threshold=None, w_threshold=None):
     mask_filled = mask.copy()
 
     for label in range(1, num_features + 1):
-        h, w = np.where(labeled == label)
-        if len(h) <= h_threshold and len(w) <= w_threshold:
+        area = np.sum(labeled == label)
+        if area <= h_area_threshold * w_area_threshold:
+            h, w = np.where(labeled == label)
             mask_filled[h, w] = 1
 
     return mask_filled
 
 
-def remove_small_nontransparent_regions(mask, h_threshold=None, w_threshold=None):
-    if h_threshold is None:
-        h_threshold = mask.shape[0] * 0.5
-    if w_threshold is None:
-        w_threshold = mask.shape[1] * 0.5
+def remove_small_nontransparent_regions(
+    mask, h_area_threshold=None, w_area_threshold=None
+):
+    if h_area_threshold is None:
+        h_area_threshold = mask.shape[0] * 0.01
+    if w_area_threshold is None:
+        w_area_threshold = mask.shape[1] * 0.01
 
     labeled, num_features = ndimage.label(mask == 1)
     sizes = np.bincount(labeled.ravel())
@@ -182,8 +185,9 @@ def remove_small_nontransparent_regions(mask, h_threshold=None, w_threshold=None
     mask_removed = mask.copy()
 
     for label in range(1, num_features + 1):
-        h, w = np.where(labeled == label)
-        if len(h) <= h_threshold and len(w) <= w_threshold:
+        area = np.sum(labeled == label)
+        if area <= h_area_threshold * w_area_threshold:
+            h, w = np.where(labeled == label)
             mask_removed[h, w] = 0
 
     return mask_removed
@@ -233,6 +237,7 @@ def segment(input_path, text_prompt):
     image = cv2.imread(input_path)
     masks = masks.numpy().squeeze(1)
     mask = np.sum(masks, axis=0)
+    mask = np.where(mask >= 1, 1, 0)
     mask = keep_small_transparent_regions(mask)
     mask = remove_small_nontransparent_regions(mask)
     alpha_channel = np.where(mask == 0, 0, 255).astype(np.uint8)
