@@ -153,9 +153,9 @@ def get_bbox_from_image(image):
 
 def keep_small_transparent_regions(mask, h_area_threshold=None, w_area_threshold=None):
     if h_area_threshold is None:
-        h_area_threshold = mask.shape[0] * 0.01
+        h_area_threshold = mask.shape[0] * 0.05
     if w_area_threshold is None:
-        w_area_threshold = mask.shape[1] * 0.01
+        w_area_threshold = mask.shape[1] * 0.05
 
     labeled, num_features = ndimage.label(mask == 0)
     sizes = np.bincount(labeled.ravel())
