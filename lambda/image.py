@@ -195,7 +195,7 @@ def remove_small_nontransparent_regions(
 
 def segment(input_path, text_prompt):
     local_image_path = input_path
-    TEXT_PROMPT = text_prompt.replace(" and ", " . ")
+    TEXT_PROMPT = text_prompt.replace(" and ", " . ").replace(",", " . ")
     BOX_TRESHOLD = 0.3
     TEXT_TRESHOLD = 0.25
 
