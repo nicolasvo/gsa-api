@@ -74,9 +74,9 @@ def rescale_image(image, px=512, padding=0):
     y_offset = (padded_height - height) // 2
 
     # Place the resized image in the center of the padded canvas
-    padded_image[
-        y_offset : y_offset + height, x_offset : x_offset + width
-    ] = image_resized
+    padded_image[y_offset : y_offset + height, x_offset : x_offset + width] = (
+        image_resized
+    )
 
     return padded_image
 
@@ -246,7 +246,21 @@ def segment(input_path, text_prompt):
     return image
 
 
-def make_sticker(input_path, output_path, text_prompt):
+def make_sticker(input_path, output_path, text_prompt, input_then_path):
+    if "then" in text_prompt:
+        text_prompt_then = text_prompt.split("then")[0]
+        text_prompt = text_prompt.split("then")[-1]
+        image = segment(input_path, text_prompt_then)
+        if isinstance(image, bool) and image is False:
+            return False
+        bbox = get_bbox_from_image(image)
+        if isinstance(bbox, bool) and bbox is False:
+            return False
+        x1, y1, x2, y2 = bbox
+        image = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
+        cropped_image = image[y1:y2, x1:x2]
+        cv2.imwrite(input_then_path, cropped_image)
+        input_path = input_then_path
     image = segment(input_path, text_prompt)
     if isinstance(image, bool) and image is False:
         return False
