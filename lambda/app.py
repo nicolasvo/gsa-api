@@ -29,7 +29,7 @@ async def process_image(image_data: dict):
 
     with tempfile.TemporaryDirectory(dir="/tmp/") as tmpdirname:
         input_path = f"{tmpdirname}/input.jpeg"
-        input_then_path = f"{tmpdirname}/input_then.jpeg"
+        input_then_path = f"{tmpdirname}/input_then.png"
         output_path = f"{tmpdirname}/output.png"
         base64_to_image(image_base64, input_path)
         is_segmented = make_sticker(
