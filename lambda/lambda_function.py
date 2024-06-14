@@ -24,9 +24,12 @@ def lambda_handler(event, context):
         text_prompt = body["text_prompt"]
         with tempfile.TemporaryDirectory(dir="/tmp/") as tmpdirname:
             input_path = f"{tmpdirname}/input.jpeg"
+            input_then_path = f"{tmpdirname}/input_then.png"
             output_path = f"{tmpdirname}/output.png"
             base64_to_image(image, input_path)
-            is_segmented = make_sticker(input_path, output_path, text_prompt)
+            is_segmented = make_sticker(
+                input_path, output_path, text_prompt, input_then_path
+            )
             if is_segmented:
                 return json.dumps({"image": image_to_base64(output_path)})
             return json.dumps({"image": ""})
